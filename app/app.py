@@ -88,6 +88,31 @@ for j in range(tiles_up):
     else:
         offset_x = 0
 
+    # Handle left-side offset filler
+    if offset_x > 0:
+        needed = offset_x
+        matched = None
+        for s in sorted(scrap_pool):
+            if s >= needed - TOLERANCE:
+                matched = s
+                break
+        if matched:
+            scrap_pool.remove(matched)
+            remaining = round(matched - needed, 2)
+            if remaining > TOLERANCE:
+                scrap_pool.append(remaining)
+            edgecolor = 'blue'
+            scraps_reused += 1
+        else:
+            leftover = tile_width - needed
+            if leftover > TOLERANCE:
+                scrap_pool.append(round(leftover, 2))
+            edgecolor = 'red'
+
+        ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height,
+                                       edgecolor=edgecolor, facecolor='lightgray'))
+        cut_tiles += 1
+
     for i in range(tiles_across + 1):
         tile_x = i * tile_full_width + offset_x
         if tile_x >= wall_width:

@@ -2,28 +2,41 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import math
+import re
 
 st.set_page_config(layout="wide")
-st.title("🧱 JDC Tile Layout Visualizer")
+st.title("🧱 Custom Shower Tile Layout Visualizer with Cutouts, Grout, and Stagger")
 
-st.markdown("Enter wall and tile dimensions to visualize your tiling layout, including cut tiles and accurate measurements.")
+st.markdown("Enter wall and tile dimensions to visualize your tiling layout, including cut tiles, grout spacing, and staggering.")
 
-def unit_input(label, default_val, key):
-    col_a, col_b = st.columns([3, 1])
-    with col_a:
-        value = st.number_input(label, min_value=0.0, value=default_val, key=key)
-    with col_b:
-        unit = st.selectbox(" ", ["inches", "feet"], key=f"unit_{key}")
-    return value * (12 if unit == "feet" else 1), unit
+# --- Parse input like 5'11" or 2'0.5"
+def parse_feet_inches(value):
+    try:
+        match = re.match(r"(?:(\d+)'\s*)?(\d+(?:\.\d*)?)?\"?", value.strip())
+        if match:
+            feet = float(match.group(1) or 0)
+            inches = float(match.group(2) or 0)
+            return feet * 12 + inches
+    except:
+        pass
+    return 0.0
+
+# --- Unit input with feet/inches parser ---
+def dimension_input(label, default_str, key):
+    text_val = st.text_input(label, value=default_str, key=key)
+    return parse_feet_inches(text_val)
 
 # --- Wall and Tile Inputs ---
 col1, col2 = st.columns(2)
 with col1:
-    wall_width, unit_w = unit_input("Wall Width", 60.0, "wall_width")
-    wall_height, unit_h = unit_input("Wall Height", 90.0, "wall_height")
+    wall_width = dimension_input("Wall Width (e.g., 5'11\")", "5'0\"", "wall_width")
+    wall_height = dimension_input("Wall Height", "7'6\"", "wall_height")
 with col2:
-    tile_width, unit_tw = unit_input("Tile Width", 10.0, "tile_width")
-    tile_height, unit_th = unit_input("Tile Height", 10.0, "tile_height")
+    tile_width = dimension_input("Tile Width", "1'0\"", "tile_width")
+    tile_height = dimension_input("Tile Height", "1'0\"", "tile_height")
+    grout_w = st.number_input("Grout Spacing Horizontal (in)", min_value=0.0, value=0.25)
+    grout_h = st.number_input("Grout Spacing Vertical (in)", min_value=0.0, value=0.25)
+    stagger = st.checkbox("Stagger Rows (Brick Pattern)", value=False)
     show_grid = st.checkbox("Show Grid", value=True)
     show_measurements = st.checkbox("Show Measurements", value=True)
 
@@ -33,10 +46,10 @@ num_cutouts = st.number_input("Number of Cutouts", min_value=0, max_value=5, val
 cutouts = []
 for i in range(int(num_cutouts)):
     st.markdown(f"**Cutout {i+1}**")
-    cx, _ = unit_input(f"Cutout {i+1} X Position", 40.0, f"cutout_x_{i}")
-    cy, _ = unit_input(f"Cutout {i+1} Y Position", 0.0, f"cutout_y_{i}")
-    cw, _ = unit_input(f"Cutout {i+1} Width", 20.0, f"cutout_w_{i}")
-    ch, _ = unit_input(f"Cutout {i+1} Height", 20.0, f"cutout_h_{i}")
+    cx = dimension_input(f"Cutout {i+1} X Position", "3'0\"", f"cutout_x_{i}")
+    cy = dimension_input(f"Cutout {i+1} Y Position", "0'0\"", f"cutout_y_{i}")
+    cw = dimension_input(f"Cutout {i+1} Width", "1'0\"", f"cutout_w_{i}")
+    ch = dimension_input(f"Cutout {i+1} Height", "1'0\"", f"cutout_h_{i}")
     cutouts.append((cx, cy, cw, ch))
 
 # --- Plotting ---
@@ -52,20 +65,23 @@ if show_grid:
     ax.grid(True, which='both', color='lightgrey', linewidth=0.5)
 
 # Tiling calculation
-tiles_across = math.ceil(wall_width / tile_width)
-tiles_up = math.ceil(wall_height / tile_height)
+tile_full_width = tile_width + grout_w
+tile_full_height = tile_height + grout_h
+tiles_across = math.ceil(wall_width / tile_full_width)
+tiles_up = math.ceil(wall_height / tile_full_height)
 
 full_tiles = 0
 cut_tiles = 0
 
 # Draw tiles
-for i in range(tiles_across):
-    for j in range(tiles_up):
-        tile_x = i * tile_width
-        tile_y = j * tile_height
+for j in range(tiles_up):
+    for i in range(tiles_across):
+        offset_x = (tile_full_width / 2) if (stagger and j % 2 == 1) else 0
+        tile_x = i * tile_full_width + offset_x
+        tile_y = j * tile_full_height
 
-        tile_right = tile_x + tile_width
-        tile_top = tile_y + tile_height
+        if tile_x >= wall_width or tile_y >= wall_height:
+            continue
 
         draw_width = min(tile_width, wall_width - tile_x)
         draw_height = min(tile_height, wall_height - tile_y)

@@ -74,13 +74,35 @@ tiles_up = math.ceil(wall_height / tile_full_height)
 full_tiles = 0
 cut_tiles = 0
 scrap_pool = []
+scraps_reused = 0
 
 # Draw tiles
 for j in range(tiles_up):
-    for i in range(tiles_across + 1):  # +1 to include overflow space for cuts
-        offset_x = (tile_full_width / 2) if (stagger and j % 2 == 1) else 0
+    row_y = j * tile_full_height
+    is_staggered = stagger and (j % 2 == 1)
+    offset_x = (tile_full_width / 2) if is_staggered else 0
+
+    # Check for staggered scrap reuse at the start
+    if is_staggered and reuse_scraps:
+        left_scrap = tile_width / 2
+        matched_scrap = None
+        for scrap in scrap_pool:
+            if abs(scrap - left_scrap) < 0.1:
+                matched_scrap = scrap
+                break
+        if matched_scrap is not None:
+            scrap_pool.remove(matched_scrap)
+            color = 'lightgray'
+            edgecolor = 'blue'
+            linewidth = 1.5
+            rect = patches.Rectangle((0, row_y), left_scrap, tile_height, linewidth=linewidth, edgecolor=edgecolor, facecolor=color)
+            ax.add_patch(rect)
+            cut_tiles += 1
+            scraps_reused += 1
+
+    for i in range(tiles_across + 1):
         tile_x = i * tile_full_width + offset_x
-        tile_y = j * tile_full_height
+        tile_y = row_y
 
         if tile_y >= wall_height:
             continue
@@ -98,16 +120,22 @@ for j in range(tiles_up):
                 if abs(scrap - draw_width) < 0.1:
                     found_scrap = True
                     scrap_pool.remove(scrap)
+                    edgecolor = 'blue'
+                    scraps_reused += 1
                     break
             if found_scrap:
-                is_cut = False
+                is_cut = True
             else:
                 scrap_pool.append(tile_width - draw_width)
                 is_cut = True
+                edgecolor = 'red'
         else:
             is_cut = draw_width < tile_width or draw_height < tile_height
             if is_cut:
                 scrap_pool.append(tile_width - draw_width)
+                edgecolor = 'red'
+            else:
+                edgecolor = 'gray'
 
         # --- Cutout collision check ---
         overlap_area = 0
@@ -123,11 +151,10 @@ for j in range(tiles_up):
             continue
         elif usable_ratio < 1:
             is_cut = True
+            edgecolor = 'red'
 
         color = 'lightgray'
-        edgecolor = 'red' if is_cut else 'gray'
-        linewidth = 1 if is_cut else 0.5
-
+        linewidth = 1.5 if edgecolor == 'blue' else (1 if is_cut else 0.5)
         rect = patches.Rectangle((tile_x, tile_y), draw_width, draw_height,
                                  linewidth=linewidth, edgecolor=edgecolor, facecolor=color)
         ax.add_patch(rect)
@@ -160,4 +187,4 @@ st.subheader("Tile Count Summary")
 st.write(f"**Full Tiles:** {full_tiles}")
 st.write(f"**Cut Tiles:** {cut_tiles}")
 st.write(f"**Total Tiles Required:** {full_tiles + cut_tiles}")
-st.write(f"**Scraps Reused:** {len(scrap_pool)}")
+st.write(f"**Scraps Reused:** {scraps_reused}")

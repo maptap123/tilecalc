@@ -1,11 +1,12 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import math
 
 st.set_page_config(layout="wide")
-st.title("🧱 Custom Shower Tile Layout Visualizer")
+st.title("🧱 Custom Shower Tile Layout Visualizer with Cut Tile Tracking")
 
-st.markdown("Enter wall and tile dimensions to visualize your tiling layout with accurate measurements.")
+st.markdown("Enter wall and tile dimensions to visualize your tiling layout, including cut tiles and accurate measurements.")
 
 # --- Input section ---
 col1, col2 = st.columns(2)
@@ -24,7 +25,9 @@ with col2:
     show_measurements = st.checkbox("Show Measurements", value=True)
 
 # --- Plotting ---
-fig, ax = plt.subplots(figsize=(8, 10))
+fig_width = wall_width / 10
+fig_height = wall_height / 10
+fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 ax.set_xlim(0, wall_width)
 ax.set_ylim(0, wall_height)
 ax.set_aspect('equal')
@@ -33,19 +36,46 @@ ax.set_yticks(range(0, wall_height + 1, 10))
 if show_grid:
     ax.grid(True, which='both', color='lightgrey', linewidth=0.5)
 
+# Tiling calculation
+tiles_across = math.ceil(wall_width / tile_width)
+tiles_up = math.ceil(wall_height / tile_height)
+
+full_tiles = 0
+cut_tiles = 0
+
 # Draw tiles
-tiles_across = wall_width // tile_width
-tiles_up = wall_height // tile_height
-for i in range(int(tiles_across)):
-    for j in range(int(tiles_up)):
+for i in range(tiles_across):
+    for j in range(tiles_up):
         tile_x = i * tile_width
         tile_y = j * tile_height
-        # Skip tiles in cutout
-        if cutout_x < tile_x + tile_width and tile_x < cutout_x + cutout_width and \
-           cutout_y < tile_y + tile_height and tile_y < cutout_y + cutout_height:
+        
+        tile_right = tile_x + tile_width
+        tile_top = tile_y + tile_height
+
+        # Check if tile is in cutout
+        in_cutout = cutout_x < tile_right and tile_x < cutout_x + cutout_width and \
+                    cutout_y < tile_top and tile_y < cutout_y + cutout_height
+        if in_cutout:
             continue
-        rect = patches.Rectangle((tile_x, tile_y), tile_width, tile_height, linewidth=0.5, edgecolor='gray', facecolor='lightgray')
+
+        # Determine tile size within bounds
+        draw_width = min(tile_width, wall_width - tile_x)
+        draw_height = min(tile_height, wall_height - tile_y)
+
+        is_cut = draw_width < tile_width or draw_height < tile_height
+
+        color = 'lightgray'
+        edgecolor = 'red' if is_cut else 'gray'
+        linewidth = 1 if is_cut else 0.5
+
+        rect = patches.Rectangle((tile_x, tile_y), draw_width, draw_height,
+                                 linewidth=linewidth, edgecolor=edgecolor, facecolor=color)
         ax.add_patch(rect)
+
+        if is_cut:
+            cut_tiles += 1
+        else:
+            full_tiles += 1
 
 # Draw wall outline
 ax.add_patch(patches.Rectangle((0, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
@@ -66,8 +96,7 @@ ax.invert_yaxis()
 st.pyplot(fig)
 
 # --- Tile Count Summary ---
-total_tiles = int(tiles_across * tiles_up)
-st.subheader("Tile Count Estimate")
-st.write(f"Tiles across: {int(tiles_across)}")
-st.write(f"Tiles up: {int(tiles_up)}")
-st.write(f"**Estimated usable tiles (not in cutout):** {total_tiles}")
+st.subheader("Tile Count Summary")
+st.write(f"**Full Tiles:** {full_tiles}")
+st.write(f"**Cut Tiles:** {cut_tiles}")
+st.write(f"**Total Tiles Required:** {full_tiles + cut_tiles}")

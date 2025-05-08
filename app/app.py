@@ -25,8 +25,8 @@ with col2:
     show_measurements = st.checkbox("Show Measurements", value=True)
 
 # --- Plotting ---
-fig_width = wall_width / 10
-fig_height = wall_height / 10
+fig_width = max(6, wall_width / 30)
+fig_height = max(6, wall_height / 30)
 fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 ax.set_xlim(0, wall_width)
 ax.set_ylim(0, wall_height)
@@ -48,22 +48,27 @@ for i in range(tiles_across):
     for j in range(tiles_up):
         tile_x = i * tile_width
         tile_y = j * tile_height
-        
+
         tile_right = tile_x + tile_width
         tile_top = tile_y + tile_height
 
-        # Check if tile is in cutout
-        in_cutout = cutout_x < tile_right and tile_x < cutout_x + cutout_width and \
-                    cutout_y < tile_top and tile_y < cutout_y + cutout_height
-        if in_cutout:
-            continue
-
-        # Determine tile size within bounds
+        # Determine tile size within wall bounds
         draw_width = min(tile_width, wall_width - tile_x)
         draw_height = min(tile_height, wall_height - tile_y)
 
-        is_cut = draw_width < tile_width or draw_height < tile_height
+        # Determine overlap with cutout
+        overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_width) - max(tile_x, cutout_x))
+        overlap_y = max(0, min(tile_y + draw_height, cutout_y + cutout_height) - max(tile_y, cutout_y))
+        overlap_area = overlap_x * overlap_y
+        tile_area = tile_width * tile_height
 
+        usable_ratio = 1 - (overlap_area / tile_area)
+
+        # Skip tile if almost completely inside cutout
+        if usable_ratio <= 0.05:
+            continue
+
+        is_cut = usable_ratio < 1
         color = 'lightgray'
         edgecolor = 'red' if is_cut else 'gray'
         linewidth = 1 if is_cut else 0.5

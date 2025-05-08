@@ -4,10 +4,17 @@ import matplotlib.patches as patches
 import math
 import re
 
-st.set_page_config(layout="wide")
-st.title("🧱 Smart Shower Tile Layout Visualizer with Advanced Patterns and Scrap Reuse")
+st.set_page_config(page_title="Tile Layout Visualizer", layout="wide")
+st.markdown("""
+    <h1 style='text-align: center; color: #3E4E88;'>🧱 Tile Layout Visualizer</h1>
+    <p style='text-align: center; font-size: 18px;'>Plan smarter. Cut cleaner. Save tiles.</p>
+""", unsafe_allow_html=True)
 
-st.markdown("Visualize tile layouts with grout spacing, cutouts, and patterns like staggered, one-third offset, and more.")
+st.markdown("""
+    <div style='background-color: #f0f2f6; padding: 10px; border-left: 5px solid #3E4E88;'>
+    💡 This tool helps visualize tile layouts with cutout areas, staggered patterns, and real-time scrap tracking.
+    </div>
+""", unsafe_allow_html=True)
 
 # Parse 5'11" input
 def parse_feet_inches(value):
@@ -70,7 +77,8 @@ tiles_across = math.ceil(wall_width / tile_full_width)
 tiles_up = math.ceil(wall_height / tile_full_height)
 
 scale = min(1, 10 / max(wall_width, wall_height))
-fig, ax = plt.subplots(figsize=(wall_width * scale, wall_height * scale))
+zoom = st.slider("Zoom", 0.5, 2.0, 1.0, 0.1)
+fig, ax = plt.subplots(figsize=(wall_width * scale * zoom, wall_height * scale * zoom))
 ax.set_xlim(0, wall_width)
 ax.set_ylim(0, wall_height)
 ax.set_aspect('equal')

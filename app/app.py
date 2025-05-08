@@ -69,7 +69,8 @@ tile_full_height = tile_height + grout_h
 tiles_across = math.ceil(wall_width / tile_full_width)
 tiles_up = math.ceil(wall_height / tile_full_height)
 
-fig, ax = plt.subplots(figsize=(wall_width / 10, wall_height / 10))
+scale = min(1, 10 / max(wall_width, wall_height))
+fig, ax = plt.subplots(figsize=(wall_width * scale, wall_height * scale))
 ax.set_xlim(0, wall_width)
 ax.set_ylim(0, wall_height)
 ax.set_aspect('equal')

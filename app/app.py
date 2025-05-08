@@ -39,7 +39,8 @@ with col2:
         "Straight",
         "Staggered (½ Offset)",
         "One-third Offset",
-        "Herringbone",
+        "Herringbone (90° Straight)",
+        "Herringbone (45° Diagonal)",
         "Block Herringbone",
         "Basketweave"
     ])
@@ -76,93 +77,96 @@ ax.set_xlim(0, wall_width)
 ax.set_ylim(0, wall_height)
 ax.set_aspect('equal')
 
-# Tile layout logic
-for j in range(tiles_up):
-    row_y = j * tile_full_height
+if layout_style == "Herringbone (45° Diagonal)":
+    x = 0
+    while x < wall_width:
+        y = 0
+        while y < wall_height:
+            if (int(x / tile_width) + int(y / tile_height)) % 2 == 0:
+                dx, dy = tile_width, tile_height
+            else:
+                dx, dy = tile_height, tile_width
+            if x + dx <= wall_width and y + dy <= wall_height:
+                ax.add_patch(patches.Rectangle((x, y), dx, dy, angle=45, edgecolor='gray', facecolor='lightgray'))
+                full_tiles += 1
+            y += tile_height
+        x += tile_width
 
-    # Determine offset style
-    if layout_style == "Staggered (½ Offset)":
-        offset_x = (j % 2) * (tile_width / 2 + grout_w / 2)
-    elif layout_style == "One-third Offset":
-        offset_x = (j % 3) * (tile_width / 3 + grout_w / 3)
-    else:
-        offset_x = 0
+elif layout_style == "Herringbone (90° Straight)":
+    for j in range(tiles_up):
+        row_y = j * tile_full_height
+        for i in range(tiles_across):
+            tile_x = i * tile_full_width
+            rotate = (i + j) % 2 == 0
+            if rotate:
+                ax.add_patch(patches.Rectangle((tile_x, row_y), tile_height, tile_width, edgecolor='gray', facecolor='lightgray'))
+            else:
+                ax.add_patch(patches.Rectangle((tile_x, row_y), tile_width, tile_height, edgecolor='gray', facecolor='lightgray'))
+            full_tiles += 1
 
-    # Handle left-side offset filler
-    if offset_x > 0:
-        needed = offset_x
-        matched = None
-        for s in sorted(scrap_pool):
-            if s >= needed - TOLERANCE:
-                matched = s
-                break
-        if matched:
-            scrap_pool.remove(matched)
-            remaining = round(matched - needed, 2)
-            if remaining > TOLERANCE:
-                scrap_pool.append(remaining)
-            edgecolor = 'blue'
-            scraps_reused += 1
+else:
+    for j in range(tiles_up):
+        row_y = j * tile_full_height
+        if layout_style == "Staggered (½ Offset)":
+            offset_x = (j % 2) * (tile_width / 2 + grout_w / 2)
+        elif layout_style == "One-third Offset":
+            offset_x = (j % 3) * (tile_width / 3 + grout_w / 3)
         else:
-            leftover = tile_width - needed
-            if leftover > TOLERANCE:
-                scrap_pool.append(round(leftover, 2))
-            edgecolor = 'red'
+            offset_x = 0
 
-        ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height,
-                                       edgecolor=edgecolor, facecolor='lightgray'))
-        cut_tiles += 1
-
-    for i in range(tiles_across + 1):
-        tile_x = i * tile_full_width + offset_x
-        if tile_x >= wall_width:
-            break
-
-        draw_width = min(tile_width, wall_width - tile_x)
-        draw_height = tile_height
-        leftover = round(tile_width - draw_width, 2)
-        is_cut = draw_width < tile_width - TOLERANCE
-
-        reused = False
-        if draw_width > 0 and reuse_scraps:
-            for scrap in sorted(scrap_pool):
-                if scrap >= draw_width - TOLERANCE:
-                    scrap_pool.remove(scrap)
-                    remaining = round(scrap - draw_width, 2)
-                    if remaining > TOLERANCE:
-                        scrap_pool.append(remaining)
-                    edgecolor = 'blue'
-                    reused = True
-                    scraps_reused += 1
+        if offset_x > 0:
+            needed = offset_x
+            matched = None
+            for s in sorted(scrap_pool):
+                if s >= needed - TOLERANCE:
+                    matched = s
                     break
-
-        if not reused and is_cut:
-            scrap_pool.append(leftover)
-            edgecolor = 'red'
-        elif reused:
-            edgecolor = 'blue'
-        else:
-            edgecolor = 'gray'
-
-        # Herringbone and basketweave overrides
-        if layout_style == "Herringbone":
-            if (i + j) % 2 == 0:
-                tile_w, tile_h = tile_width, tile_height
-                angle = 45
+            if matched:
+                scrap_pool.remove(matched)
+                remaining = round(matched - needed, 2)
+                if remaining > TOLERANCE:
+                    scrap_pool.append(remaining)
+                edgecolor = 'blue'
+                scraps_reused += 1
             else:
-                tile_w, tile_h = tile_height, tile_width
-                angle = -45
-            ax.add_patch(patches.Rectangle((tile_x, row_y), tile_w, tile_h,
-                                           edgecolor=edgecolor, facecolor='lightgray', angle=angle))
-        elif layout_style in ["Block Herringbone", "Basketweave"]:
-            if (i + j) % 2 == 0:
-                ax.add_patch(patches.Rectangle((tile_x, row_y), tile_width * 2, tile_height,
-                                               edgecolor=edgecolor, facecolor='lightgray'))
+                leftover = tile_width - needed
+                if leftover > TOLERANCE:
+                    scrap_pool.append(round(leftover, 2))
+                edgecolor = 'red'
+            ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='lightgray'))
+            cut_tiles += 1
+
+        for i in range(tiles_across + 1):
+            tile_x = i * tile_full_width + offset_x
+            if tile_x >= wall_width:
+                break
+
+            draw_width = min(tile_width, wall_width - tile_x)
+            draw_height = tile_height
+            leftover = round(tile_width - draw_width, 2)
+            is_cut = draw_width < tile_width - TOLERANCE
+
+            reused = False
+            if draw_width > 0 and reuse_scraps:
+                for scrap in sorted(scrap_pool):
+                    if scrap >= draw_width - TOLERANCE:
+                        scrap_pool.remove(scrap)
+                        remaining = round(scrap - draw_width, 2)
+                        if remaining > TOLERANCE:
+                            scrap_pool.append(remaining)
+                        edgecolor = 'blue'
+                        reused = True
+                        scraps_reused += 1
+                        break
+
+            if not reused and is_cut:
+                scrap_pool.append(leftover)
+                edgecolor = 'red'
+            elif reused:
+                edgecolor = 'blue'
             else:
-                ax.add_patch(patches.Rectangle((tile_x, row_y), tile_width, tile_height * 2,
-                                               edgecolor=edgecolor, facecolor='lightgray'))
-        else:
-            # Regular tile
+                edgecolor = 'gray'
+
             overlap_area = 0
             for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
                 overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_w) - max(tile_x, cutout_x))
@@ -180,10 +184,10 @@ for j in range(tiles_up):
             ax.add_patch(patches.Rectangle((tile_x, row_y), draw_width, tile_height,
                                            edgecolor=edgecolor, facecolor='lightgray', linewidth=1.5 if edgecolor == 'blue' else 1))
 
-        if is_cut or reused:
-            cut_tiles += 1
-        else:
-            full_tiles += 1
+            if is_cut or reused:
+                cut_tiles += 1
+            else:
+                full_tiles += 1
 
 # Draw wall + cutouts
 ax.add_patch(patches.Rectangle((0, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))

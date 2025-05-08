@@ -38,6 +38,7 @@ with col2:
     grout_h = st.number_input("Grout Spacing Vertical (in)", min_value=0.0, value=0.25)
     stagger = st.checkbox("Stagger Rows (Brick Pattern)", value=True)
     reuse_scraps = st.checkbox("Reuse Scrap Pieces Where Possible", value=True)
+    debug_mode = st.checkbox("Show Debug Info", value=False)
     show_grid = st.checkbox("Show Grid", value=True)
     show_measurements = st.checkbox("Show Measurements", value=True)
 
@@ -75,7 +76,7 @@ full_tiles = 0
 cut_tiles = 0
 scrap_pool = []
 scraps_reused = 0
-TOLERANCE = 0.1  # inch
+TOLERANCE = 0.1
 
 # Draw tiles
 for j in range(tiles_up):
@@ -83,21 +84,19 @@ for j in range(tiles_up):
     is_staggered = stagger and (j % 2 == 1)
     offset_x = (tile_full_width / 2) if is_staggered else 0
 
-    # Reuse half-tile scrap at start
+    # Reuse half-tile if available at row start
     if is_staggered and reuse_scraps:
-        starter_scrap = tile_width / 2
-        for scrap in scrap_pool:
-            if abs(scrap - starter_scrap) < TOLERANCE:
-                rect = patches.Rectangle((0, row_y), starter_scrap, tile_height, linewidth=1.5, edgecolor='blue', facecolor='lightgray')
-                ax.add_patch(rect)
-                scrap_pool.remove(scrap)
-                cut_tiles += 1
-                scraps_reused += 1
-                break
+        if "half-tile" in scrap_pool:
+            rect = patches.Rectangle((0, row_y), tile_width / 2, tile_height, linewidth=1.5, edgecolor='blue', facecolor='lightgray')
+            ax.add_patch(rect)
+            scrap_pool.remove("half-tile")
+            cut_tiles += 1
+            scraps_reused += 1
 
     for i in range(tiles_across + 1):
         tile_x = i * tile_full_width + offset_x
         tile_y = row_y
+
         if tile_y >= wall_height:
             continue
 
@@ -115,29 +114,36 @@ for j in range(tiles_up):
         is_cut = False
         edgecolor = 'gray'
 
-        # Scrap reuse check
+        # Scrap reuse matching
         if reuse_scraps and draw_width < tile_width - TOLERANCE:
-            for scrap in scrap_pool:
-                if abs(scrap - draw_width) < TOLERANCE:
-                    scrap_pool.remove(scrap)
-                    edgecolor = 'blue'
-                    is_cut = True
-                    scraps_reused += 1
-                    break
-            else:
-                scrap_pool.append(round(tile_width - draw_width, 1))
+            match_label = None
+            if abs(draw_width - tile_width / 2) < TOLERANCE and "half-tile" in scrap_pool:
+                match_label = "half-tile"
+            elif str(round(draw_width, 1)) in scrap_pool:
+                match_label = str(round(draw_width, 1))
+
+            if match_label:
+                scrap_pool.remove(match_label)
+                edgecolor = 'blue'
                 is_cut = True
+                scraps_reused += 1
+            else:
+                if abs(draw_width - tile_width / 2) < TOLERANCE:
+                    scrap_pool.append("half-tile")
+                else:
+                    scrap_pool.append(str(round(tile_width - draw_width, 1)))
                 edgecolor = 'red'
+                is_cut = True
+
         elif draw_width < tile_width - TOLERANCE:
-            scrap_pool.append(round(tile_width - draw_width, 1))
-            is_cut = True
+            if abs(draw_width - tile_width / 2) < TOLERANCE:
+                scrap_pool.append("half-tile")
+            else:
+                scrap_pool.append(str(round(tile_width - draw_width, 1)))
             edgecolor = 'red'
+            is_cut = True
 
-        # Right edge half-tile scrap (for staggered reuse)
-        if stagger and not is_staggered and abs(draw_width - tile_width / 2) < TOLERANCE:
-            scrap_pool.append(round(tile_width / 2, 1))
-
-        # Cutout collision check
+        # Cutout collision
         overlap_area = 0
         for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
             overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_w) - max(tile_x, cutout_x))
@@ -152,10 +158,8 @@ for j in range(tiles_up):
             is_cut = True
             edgecolor = 'red'
 
-        color = 'lightgray'
-        linewidth = 1.5 if edgecolor == 'blue' else (1 if is_cut else 0.5)
         rect = patches.Rectangle((tile_x, tile_y), draw_width, draw_height,
-                                 linewidth=linewidth, edgecolor=edgecolor, facecolor=color)
+                                 linewidth=1.5 if edgecolor == 'blue' else 1, edgecolor=edgecolor, facecolor='lightgray')
         ax.add_patch(rect)
 
         if is_cut:
@@ -163,10 +167,10 @@ for j in range(tiles_up):
         else:
             full_tiles += 1
 
-# Draw wall outline
+# Wall outline
 ax.add_patch(patches.Rectangle((0, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
 
-# Draw cutouts
+# Cutouts
 for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
     if cutout_w > 0 and cutout_h > 0:
         ax.add_patch(patches.Rectangle((cutout_x, cutout_y), cutout_w, cutout_h, fill=True, color='white', edgecolor='black'))
@@ -187,3 +191,5 @@ st.write(f"**Full Tiles:** {full_tiles}")
 st.write(f"**Cut Tiles:** {cut_tiles}")
 st.write(f"**Total Tiles Required:** {full_tiles + cut_tiles}")
 st.write(f"**Scraps Reused:** {scraps_reused}")
+if debug_mode:
+    st.write("Scrap Pool:", scrap_pool)

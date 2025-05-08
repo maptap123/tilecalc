@@ -7,7 +7,7 @@ import re
 st.set_page_config(layout="wide")
 st.title("🧱 Smart Shower Tile Layout Visualizer with Grout, Stagger, and Cuttable Scrap Reuse")
 
-st.markdown("Visualize your shower tiling layout with accurate grout spacing, staggered rows, and smart scrap reuse — even cut-to-fit!")
+st.markdown("Visualize your shower tiling layout with accurate grout spacing, staggered rows, cutouts, and smart scrap reuse — even cut-to-fit!")
 
 # Parse 5'11" input
 def parse_feet_inches(value):
@@ -38,6 +38,18 @@ with col2:
     stagger = st.checkbox("Stagger Rows", True)
     reuse_scraps = st.checkbox("Reuse and Cut Scraps", True)
     debug_mode = st.checkbox("Show Debug Info", False)
+
+# Cutout input
+st.subheader("Cutouts")
+num_cutouts = st.number_input("Number of Cutouts", min_value=0, max_value=5, value=0)
+cutouts = []
+for i in range(int(num_cutouts)):
+    st.markdown(f"**Cutout {i+1}**")
+    cx = dimension_input(f"Cutout {i+1} X Position", "3'0\"", f"cutout_x_{i}")
+    cy = dimension_input(f"Cutout {i+1} Y Position", "0'0\"", f"cutout_y_{i}")
+    cw = dimension_input(f"Cutout {i+1} Width", "1'0\"", f"cutout_w_{i}")
+    ch = dimension_input(f"Cutout {i+1} Height", "1'0\"", f"cutout_h_{i}")
+    cutouts.append((cx, cy, cw, ch))
 
 # Constants
 TOLERANCE = 0.1
@@ -117,6 +129,22 @@ for j in range(tiles_up):
         else:
             edgecolor = 'gray'
 
+        # Cutout collision check
+        overlap_area = 0
+        for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
+            overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_w) - max(tile_x, cutout_x))
+            overlap_y = max(0, min(row_y + tile_height, cutout_y + cutout_h) - max(row_y, cutout_y))
+            overlap_area += overlap_x * overlap_y
+
+        tile_area = tile_width * tile_height
+        usable_ratio = 1 - (overlap_area / tile_area)
+        if usable_ratio <= 0.05:
+            x += tile_full_width
+            continue
+        elif usable_ratio < 1:
+            is_cut = True
+            edgecolor = 'red'
+
         ax.add_patch(patches.Rectangle((tile_x, row_y), draw_width, tile_height,
                                        edgecolor=edgecolor, facecolor='lightgray', linewidth=1.5 if edgecolor == 'blue' else 1))
         if is_cut or reused:
@@ -126,8 +154,11 @@ for j in range(tiles_up):
 
         x += tile_full_width
 
-# Draw wall
+# Draw wall and cutouts
 ax.add_patch(patches.Rectangle((0, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
+for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
+    ax.add_patch(patches.Rectangle((cutout_x, cutout_y), cutout_w, cutout_h, fill=True, color='white', edgecolor='black'))
+
 ax.invert_yaxis()
 st.pyplot(fig)
 

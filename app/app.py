@@ -80,24 +80,25 @@ for j in range(tiles_up):
             scraps_reused += 1
             cut_tiles += 1
 
-    for i in range(tiles_across + 1):
-        tile_x = i * tile_full_width + offset_x
+    x = 0
+    while x < wall_width:
+        tile_x = x + offset_x
         if tile_x >= wall_width:
-            continue
+            break
+
         remaining_width = wall_width - tile_x
         draw_width = min(tile_width, remaining_width)
         leftover = round(tile_width - draw_width, 2)
-        is_cut = draw_width < tile_width - TOLERANCE
+        is_cut = draw_width < tile_width - TOLERANCE or draw_width < tile_width
 
-        # Try to reuse or cut scrap
         reused = False
-        if is_cut and reuse_scraps:
+        if draw_width > 0 and reuse_scraps:
             for scrap in sorted(scrap_pool):
                 if scrap >= draw_width - TOLERANCE:
                     scrap_pool.remove(scrap)
-                    new_left = round(scrap - draw_width, 2)
-                    if new_left > TOLERANCE:
-                        scrap_pool.append(new_left)
+                    remaining = round(scrap - draw_width, 2)
+                    if remaining > TOLERANCE:
+                        scrap_pool.append(remaining)
                     edgecolor = 'blue'
                     reused = True
                     scraps_reused += 1
@@ -117,6 +118,8 @@ for j in range(tiles_up):
             cut_tiles += 1
         else:
             full_tiles += 1
+
+        x += tile_full_width
 
 # Draw wall
 ax.add_patch(patches.Rectangle((0, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))

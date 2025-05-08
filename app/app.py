@@ -76,26 +76,24 @@ cut_tiles = 0
 scrap_pool = []
 scraps_reused = 0
 
+TOLERANCE = 0.1  # inch margin to consider a tile full
+
 # Draw tiles
 for j in range(tiles_up):
     row_y = j * tile_full_height
     is_staggered = stagger and (j % 2 == 1)
     offset_x = (tile_full_width / 2) if is_staggered else 0
 
-    # Check for staggered scrap reuse at the start
     if is_staggered and reuse_scraps:
         left_scrap = tile_width / 2
         matched_scrap = None
         for scrap in scrap_pool:
-            if abs(scrap - left_scrap) < 0.1:
+            if abs(scrap - left_scrap) < TOLERANCE:
                 matched_scrap = scrap
                 break
         if matched_scrap is not None:
             scrap_pool.remove(matched_scrap)
-            color = 'lightgray'
-            edgecolor = 'blue'
-            linewidth = 1.5
-            rect = patches.Rectangle((0, row_y), left_scrap, tile_height, linewidth=linewidth, edgecolor=edgecolor, facecolor=color)
+            rect = patches.Rectangle((0, row_y), left_scrap, tile_height, linewidth=1.5, edgecolor='blue', facecolor='lightgray')
             ax.add_patch(rect)
             cut_tiles += 1
             scraps_reused += 1
@@ -107,17 +105,30 @@ for j in range(tiles_up):
         if tile_y >= wall_height:
             continue
 
-        draw_width = min(tile_width, wall_width - tile_x)
-        draw_height = min(tile_height, wall_height - tile_y)
+        raw_draw_width = tile_width
+        raw_draw_height = tile_height
+
+        if wall_width - tile_x < tile_width - TOLERANCE:
+            draw_width = wall_width - tile_x
+        else:
+            draw_width = tile_width
+
+        if wall_height - tile_y < tile_height - TOLERANCE:
+            draw_height = wall_height - tile_y
+        else:
+            draw_height = tile_height
 
         if draw_width <= 0 or draw_height <= 0:
             continue
 
-        # --- Scrap reuse check ---
-        if reuse_scraps and draw_width < tile_width:
+        is_cut = False
+        edgecolor = 'gray'
+
+        # Scrap reuse check
+        if reuse_scraps and draw_width < tile_width - TOLERANCE:
             found_scrap = False
             for scrap in scrap_pool:
-                if abs(scrap - draw_width) < 0.1:
+                if abs(scrap - draw_width) < TOLERANCE:
                     found_scrap = True
                     scrap_pool.remove(scrap)
                     edgecolor = 'blue'
@@ -129,15 +140,12 @@ for j in range(tiles_up):
                 scrap_pool.append(tile_width - draw_width)
                 is_cut = True
                 edgecolor = 'red'
-        else:
-            is_cut = draw_width < tile_width or draw_height < tile_height
-            if is_cut:
-                scrap_pool.append(tile_width - draw_width)
-                edgecolor = 'red'
-            else:
-                edgecolor = 'gray'
+        elif draw_width < tile_width - TOLERANCE:
+            scrap_pool.append(tile_width - draw_width)
+            is_cut = True
+            edgecolor = 'red'
 
-        # --- Cutout collision check ---
+        # Cutout collision check
         overlap_area = 0
         for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
             overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_w) - max(tile_x, cutout_x))

@@ -100,6 +100,10 @@ for j in range(tiles_up):
         if tile_y >= wall_height:
             continue
 
+        # NEW: Pre-check if the remaining space is half a tile
+        if not is_staggered and abs((wall_width - tile_x) - tile_width / 2) < TOLERANCE:
+            scrap_pool.append("half-tile")
+
         draw_width = tile_width
         draw_height = tile_height
 

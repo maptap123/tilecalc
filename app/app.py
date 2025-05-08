@@ -49,11 +49,12 @@ num_cutouts = st.number_input("Number of Cutouts", min_value=0, max_value=5, val
 cutouts = []
 for i in range(int(num_cutouts)):
     st.markdown(f"**Cutout {i+1}**")
+    name = st.text_input(f"Cutout {i+1} Name", f"Cutout {i+1}", key=f"cutout_name_{i}")
     cx = dimension_input(f"Cutout {i+1} X Position", "3'0\"", f"cutout_x_{i}")
     cy = dimension_input(f"Cutout {i+1} Y Position", "0'0\"", f"cutout_y_{i}")
     cw = dimension_input(f"Cutout {i+1} Width", "1'0\"", f"cutout_w_{i}")
     ch = dimension_input(f"Cutout {i+1} Height", "1'0\"", f"cutout_h_{i}")
-    cutouts.append((cx, cy, cw, ch))
+    cutouts.append((name, cx, cy, cw, ch))
 
 # Constants
 TOLERANCE = 0.1
@@ -137,7 +138,7 @@ for j in range(tiles_up):
             edgecolor = 'gray'
 
         overlap_area = 0
-        for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
+        for _, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
             overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_w) - max(tile_x, cutout_x))
             overlap_y = max(0, min(row_y + tile_height, cutout_y + cutout_h) - max(row_y, cutout_y))
             overlap_area += overlap_x * overlap_y
@@ -160,8 +161,9 @@ for j in range(tiles_up):
 
 # Draw wall + cutouts
 ax.add_patch(patches.Rectangle((0, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
-for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
+for name, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
     ax.add_patch(patches.Rectangle((cutout_x, cutout_y), cutout_w, cutout_h, fill=True, color='white', edgecolor='black'))
+    ax.text(cutout_x + cutout_w / 2, cutout_y + cutout_h / 2, name, ha='center', va='center', fontsize=8, color='black')
 
 ax.invert_yaxis()
 st.pyplot(fig)

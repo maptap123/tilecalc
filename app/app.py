@@ -8,19 +8,22 @@ st.title("🧱 Custom Shower Tile Layout Visualizer with Multiple Cutouts")
 
 st.markdown("Enter wall and tile dimensions to visualize your tiling layout, including cut tiles and accurate measurements.")
 
-# --- Unit selection ---
-unit = st.radio("Select unit:", ["inches", "feet"])
-unit_factor = 12 if unit == "feet" else 1
+def unit_input(label, default_val, key):
+    col_a, col_b = st.columns([3, 1])
+    with col_a:
+        value = st.number_input(label, min_value=0.0, value=default_val, key=key)
+    with col_b:
+        unit = st.selectbox(" ", ["inches", "feet"], key=f"unit_{key}")
+    return value * (12 if unit == "feet" else 1), unit
 
-# --- Input section ---
+# --- Wall and Tile Inputs ---
 col1, col2 = st.columns(2)
 with col1:
-    wall_width = st.number_input(f"Wall Width ({unit})", min_value=1.0, value=60.0) * unit_factor
-    wall_height = st.number_input(f"Wall Height ({unit})", min_value=1.0, value=90.0) * unit_factor
-
+    wall_width, unit_w = unit_input("Wall Width", 60.0, "wall_width")
+    wall_height, unit_h = unit_input("Wall Height", 90.0, "wall_height")
 with col2:
-    tile_width = st.number_input(f"Tile Width ({unit})", min_value=1.0, value=10.0) * unit_factor
-    tile_height = st.number_input(f"Tile Height ({unit})", min_value=1.0, value=10.0) * unit_factor
+    tile_width, unit_tw = unit_input("Tile Width", 10.0, "tile_width")
+    tile_height, unit_th = unit_input("Tile Height", 10.0, "tile_height")
     show_grid = st.checkbox("Show Grid", value=True)
     show_measurements = st.checkbox("Show Measurements", value=True)
 
@@ -30,10 +33,10 @@ num_cutouts = st.number_input("Number of Cutouts", min_value=0, max_value=5, val
 cutouts = []
 for i in range(int(num_cutouts)):
     st.markdown(f"**Cutout {i+1}**")
-    cx = st.number_input(f"Cutout {i+1} X Position ({unit})", min_value=0.0, key=f"cutout_x_{i}") * unit_factor
-    cy = st.number_input(f"Cutout {i+1} Y Position ({unit})", min_value=0.0, key=f"cutout_y_{i}") * unit_factor
-    cw = st.number_input(f"Cutout {i+1} Width ({unit})", min_value=0.0, key=f"cutout_w_{i}") * unit_factor
-    ch = st.number_input(f"Cutout {i+1} Height ({unit})", min_value=0.0, key=f"cutout_h_{i}") * unit_factor
+    cx, _ = unit_input(f"Cutout {i+1} X Position", 40.0, f"cutout_x_{i}")
+    cy, _ = unit_input(f"Cutout {i+1} Y Position", 0.0, f"cutout_y_{i}")
+    cw, _ = unit_input(f"Cutout {i+1} Width", 20.0, f"cutout_w_{i}")
+    ch, _ = unit_input(f"Cutout {i+1} Height", 20.0, f"cutout_h_{i}")
     cutouts.append((cx, cy, cw, ch))
 
 # --- Plotting ---
@@ -43,8 +46,8 @@ fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 ax.set_xlim(0, wall_width)
 ax.set_ylim(0, wall_height)
 ax.set_aspect('equal')
-ax.set_xticks(range(0, int(wall_width) + 1, int(unit_factor * 10)))
-ax.set_yticks(range(0, int(wall_height) + 1, int(unit_factor * 10)))
+ax.set_xticks(range(0, int(wall_width) + 1, 10))
+ax.set_yticks(range(0, int(wall_height) + 1, 10))
 if show_grid:
     ax.grid(True, which='both', color='lightgrey', linewidth=0.5)
 
@@ -67,7 +70,6 @@ for i in range(tiles_across):
         draw_width = min(tile_width, wall_width - tile_x)
         draw_height = min(tile_height, wall_height - tile_y)
 
-        # Check all cutouts
         overlap_area = 0
         for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
             overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_w) - max(tile_x, cutout_x))
@@ -102,12 +104,12 @@ for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
     if cutout_w > 0 and cutout_h > 0:
         ax.add_patch(patches.Rectangle((cutout_x, cutout_y), cutout_w, cutout_h, fill=True, color='white', edgecolor='black'))
         if show_measurements:
-            ax.text(cutout_x + cutout_w / 2, cutout_y - 5, f"{round(cutout_w / unit_factor)}{unit[0]}", ha='center', color='blue')
-            ax.text(cutout_x - 3, cutout_y + cutout_h / 2, f"{round(cutout_h / unit_factor)}{unit[0]}", va='center', rotation=90, color='blue')
+            ax.text(cutout_x + cutout_w / 2, cutout_y - 5, f"{round(cutout_w)}\"", ha='center', color='blue')
+            ax.text(cutout_x - 3, cutout_y + cutout_h / 2, f"{round(cutout_h)}\"", va='center', rotation=90, color='blue')
 
 if show_measurements:
-    ax.text(wall_width / 2, wall_height + 2, f"{round(wall_width / unit_factor)}{unit[0]}", ha='center', color='blue')
-    ax.text(-3, wall_height / 2, f"{round(wall_height / unit_factor)}{unit[0]}", va='center', rotation=90, color='blue')
+    ax.text(wall_width / 2, wall_height + 2, f"{round(wall_width)}\"", ha='center', color='blue')
+    ax.text(-3, wall_height / 2, f"{round(wall_height)}\"", va='center', rotation=90, color='blue')
 
 ax.invert_yaxis()
 st.pyplot(fig)

@@ -4,7 +4,7 @@ import matplotlib.patches as patches
 import math
 
 st.set_page_config(layout="wide")
-st.title("🧱 Custom Shower Tile Layout Visualizer with Multiple Cutouts")
+st.title("🧱 JDC Tile Layout Visualizer")
 
 st.markdown("Enter wall and tile dimensions to visualize your tiling layout, including cut tiles and accurate measurements.")
 

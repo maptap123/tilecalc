@@ -4,7 +4,28 @@ import matplotlib.patches as patches
 import math
 import re
 
-st.set_page_config(page_title="Tile Layout Visualizer", layout="wide")
+st.set_page_config(page_title="JDC Tile Layout Visualizer", layout="wide")
+
+st.markdown("""
+    <style>
+        body {
+            background-color: #f7f1e1;
+        }
+        .block-container {
+            background-color: #fff8e7;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        input, select, textarea {
+            background-color: #fdf6e3 !important;
+            border-radius: 5px;
+        }
+        .stSlider > div[data-baseweb="slider"] > div {
+            background-color: #c3b091;
+        }
+    </style>
+""", unsafe_allow_html=True)
 st.markdown("""
     <h1 style='text-align: center; color: #3E4E88;'>🧱 Tile Layout Visualizer</h1>
     <p style='text-align: center; font-size: 18px;'>Plan smarter. Cut cleaner. Save tiles.</p>
@@ -112,7 +133,7 @@ for j in range(tiles_up):
             if leftover > TOLERANCE:
                 scrap_pool.append(round(leftover, 2))
             edgecolor = 'red'
-        ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='lightgray'))
+        ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='#e0d4b7', hatch='///'))
         cut_tiles += 1
 
     for i in range(tiles_across + 1):

@@ -5,9 +5,9 @@ import math
 import re
 
 st.set_page_config(layout="wide")
-st.title("🧱 Custom Shower Tile Layout Visualizer with Cutouts, Grout, and Stagger")
+st.title("🧱 Smart Shower Tile Layout Visualizer with Grout, Stagger, and Scrap Reuse")
 
-st.markdown("Enter wall and tile dimensions to visualize your tiling layout, including cut tiles, grout spacing, and staggering.")
+st.markdown("Visualize your shower tiling layout with accurate grout spacing, staggered rows, and intelligent scrap reuse to minimize waste.")
 
 # --- Parse input like 5'11" or 2'0.5"
 def parse_feet_inches(value):
@@ -36,7 +36,8 @@ with col2:
     tile_height = dimension_input("Tile Height", "1'0\"", "tile_height")
     grout_w = st.number_input("Grout Spacing Horizontal (in)", min_value=0.0, value=0.25)
     grout_h = st.number_input("Grout Spacing Vertical (in)", min_value=0.0, value=0.25)
-    stagger = st.checkbox("Stagger Rows (Brick Pattern)", value=False)
+    stagger = st.checkbox("Stagger Rows (Brick Pattern)", value=True)
+    reuse_scraps = st.checkbox("Reuse Scrap Pieces Where Possible", value=True)
     show_grid = st.checkbox("Show Grid", value=True)
     show_measurements = st.checkbox("Show Measurements", value=True)
 
@@ -72,20 +73,43 @@ tiles_up = math.ceil(wall_height / tile_full_height)
 
 full_tiles = 0
 cut_tiles = 0
+scrap_pool = []
 
 # Draw tiles
 for j in range(tiles_up):
-    for i in range(tiles_across):
+    for i in range(tiles_across + 1):  # +1 to include overflow space for cuts
         offset_x = (tile_full_width / 2) if (stagger and j % 2 == 1) else 0
         tile_x = i * tile_full_width + offset_x
         tile_y = j * tile_full_height
 
-        if tile_x >= wall_width or tile_y >= wall_height:
+        if tile_y >= wall_height:
             continue
 
         draw_width = min(tile_width, wall_width - tile_x)
         draw_height = min(tile_height, wall_height - tile_y)
 
+        if draw_width <= 0 or draw_height <= 0:
+            continue
+
+        # --- Scrap reuse check ---
+        if reuse_scraps and draw_width < tile_width:
+            found_scrap = False
+            for scrap in scrap_pool:
+                if abs(scrap - draw_width) < 0.1:
+                    found_scrap = True
+                    scrap_pool.remove(scrap)
+                    break
+            if found_scrap:
+                is_cut = False
+            else:
+                scrap_pool.append(tile_width - draw_width)
+                is_cut = True
+        else:
+            is_cut = draw_width < tile_width or draw_height < tile_height
+            if is_cut:
+                scrap_pool.append(tile_width - draw_width)
+
+        # --- Cutout collision check ---
         overlap_area = 0
         for cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
             overlap_x = max(0, min(tile_x + draw_width, cutout_x + cutout_w) - max(tile_x, cutout_x))
@@ -97,8 +121,9 @@ for j in range(tiles_up):
 
         if usable_ratio <= 0.05:
             continue
+        elif usable_ratio < 1:
+            is_cut = True
 
-        is_cut = usable_ratio < 1
         color = 'lightgray'
         edgecolor = 'red' if is_cut else 'gray'
         linewidth = 1 if is_cut else 0.5
@@ -135,3 +160,4 @@ st.subheader("Tile Count Summary")
 st.write(f"**Full Tiles:** {full_tiles}")
 st.write(f"**Cut Tiles:** {cut_tiles}")
 st.write(f"**Total Tiles Required:** {full_tiles + cut_tiles}")
+st.write(f"**Scraps Reused:** {len(scrap_pool)}")

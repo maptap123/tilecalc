@@ -4,7 +4,7 @@ import matplotlib.patches as patches
 import math
 import re
 
-st.set_page_config(page_title="JDC Tile Layout Visualizer", layout="wide")
+st.set_page_config(page_title="Tile Layout Visualizer", layout="wide")
 
 st.markdown("""
     <style>
@@ -99,7 +99,9 @@ tiles_up = math.ceil(wall_height / tile_full_height)
 
 scale = min(1, 10 / max(wall_width, wall_height))
 zoom = st.slider("Zoom", 0.5, 2.0, 1.0, 0.1)
-fig, ax = plt.subplots(figsize=(wall_width * scale * zoom, wall_height * scale * zoom))
+fig_width = wall_width * scale * zoom
+fig_height = wall_height * scale * zoom
+fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 ax.set_xlim(0, wall_width)
 ax.set_ylim(0, wall_height)
 ax.set_aspect('equal')
@@ -133,7 +135,7 @@ for j in range(tiles_up):
             if leftover > TOLERANCE:
                 scrap_pool.append(round(leftover, 2))
             edgecolor = 'red'
-        ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='#e0d4b7', hatch='///'))
+        ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='#d9cbb3'))
         cut_tiles += 1
 
     for i in range(tiles_across + 1):

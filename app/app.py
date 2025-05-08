@@ -63,8 +63,8 @@ for j in range(tiles_up):
     is_staggered = stagger and (j % 2 == 1)
     offset_x = tile_full_width / 2 if is_staggered else 0
 
-    # Optional reuse for staggered start
-    if is_staggered and reuse_scraps:
+    # Reuse OR cut a new tile for staggered left-start
+    if is_staggered:
         needed = tile_width / 2
         matched = None
         for s in sorted(scrap_pool):
@@ -76,9 +76,14 @@ for j in range(tiles_up):
             remaining = round(matched - needed, 2)
             if remaining > TOLERANCE:
                 scrap_pool.append(remaining)
-            ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height, edgecolor='blue', facecolor='lightgray'))
+            edgecolor = 'blue'
             scraps_reused += 1
-            cut_tiles += 1
+        else:
+            leftover = tile_width - needed
+            scrap_pool.append(round(leftover, 2))
+            edgecolor = 'red'
+        ax.add_patch(patches.Rectangle((0, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='lightgray'))
+        cut_tiles += 1
 
     x = 0
     while x < wall_width:

@@ -181,7 +181,7 @@ for wall in walls:
     color='black',
     bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.3')
 )
-x_offset += wall_width + 6
+    x_offset += wall_width + 6
 
 # Draw each cutout in its assigned wall
 x_offset_temp = 0

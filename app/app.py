@@ -181,7 +181,7 @@ for wall in walls:
     )
     x_offset += wall_width + 6
 
-# Cutouts with inside-edge measurement labels
+# Cutouts with inside-edge labels
 x_offset_temp = 0
 for wall in walls:
     for name, wall_label, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
@@ -194,16 +194,16 @@ for wall in walls:
         ax.add_patch(patches.Rectangle((x, y), cutout_w, cutout_h,
                                        fill=True, color='white', edgecolor='black'))
 
-        # Label: Name in center
+        # Cutout name in center
         ax.text(x + cutout_w / 2, y + cutout_h / 2, name,
                 ha='center', va='center', fontsize=8, color='black')
 
-        # Label: Width at top INSIDE the box
-        ax.text(x + cutout_w / 2, y + 0.2, f'{int(cutout_w)}"', 
-                ha='center', va='bottom', fontsize=8, color='black')
+        # Width label: top inside edge
+        ax.text(x + cutout_w / 2, y + 0.1, f'{int(cutout_w)}"', 
+                ha='center', va='top', fontsize=8, color='black')
 
-        # Label: Height on left INSIDE the box
-        ax.text(x + 0.2, y + cutout_h / 2, f'{int(cutout_h)}"', 
+        # Height label: left inside edge
+        ax.text(x + 0.1, y + cutout_h / 2, f'{int(cutout_h)}"', 
                 ha='left', va='center', fontsize=8, color='black', rotation=90)
 
     x_offset_temp += wall["width"] + 6

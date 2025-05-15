@@ -5,6 +5,8 @@ import math
 import re
 import io
 from matplotlib.backends.backend_pdf import PdfPages
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 
 st.set_page_config(page_title="Tile Layout Visualizer", layout="wide")
 st.title("🧱 Smart Shower Tile Layout Visualizer with Advanced Patterns and Scrap Reuse")
@@ -35,6 +37,7 @@ grout_h = st.number_input("Grout Spacing Vertical (in)", min_value=0.0, value=0.
 layout_style = st.selectbox("Tile Pattern", ["Straight", "Staggered (½ Offset)", "One-third Offset"])
 reuse_scraps = st.checkbox("Reuse and Cut Scraps", True)
 debug_mode = st.checkbox("Show Debug Info", False)
+show_3d = st.checkbox("🔍 View 3D Layout (3 Walls Only)")
 
 # Wall setup
 st.subheader("Wall Setup")
@@ -62,162 +65,45 @@ for i in range(int(num_cutouts)):
     ch = dimension_input(f"Cutout {i+1} Height", "1'0\"", f"cutout_h_{i}")
     cutouts.append((name, assigned_wall, cx, cy, cw, ch))
 
-# Constants
-TOLERANCE = 0.1
-full_tiles = 0
-cut_tiles = 0
-scraps_reused = 0
-scrap_pool = []
+# If 3D mode is on, show basic 3D preview
+if show_3d and len(walls) == 3:
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot(111, projection='3d')
 
-# Layout
-total_width = sum(w["width"] for w in walls)
-max_height = max(w["height"] for w in walls)
-scale = min(1, 10 / max(total_width, max_height))
-fig, ax = plt.subplots(figsize=(total_width * scale, max_height * scale))
+    wall_A = walls[0]  # Left
+    wall_B = walls[1]  # Center
+    wall_C = walls[2]  # Right
 
-x_offset = 0
-for wall in walls:
-    wall_width = wall["width"]
-    wall_height = wall["height"]
-    tile_full_width = tile_width + grout_w
-    tile_full_height = tile_height + grout_h
-    tiles_across = math.ceil(wall_width / tile_full_width)
-    tiles_up = math.ceil(wall_height / tile_full_height)
+    def draw_wall(ax, start_x, start_y, start_z, dir_x, dir_z, wall, label):
+        tile_full_width = tile_width + grout_w
+        tile_full_height = tile_height + grout_h
+        tiles_across = int(wall["width"] // tile_full_width)
+        tiles_up = int(wall["height"] // tile_full_height)
 
-    for j in range(tiles_up):
-        row_y = j * tile_full_height
-        if layout_style == "Staggered (½ Offset)":
-            offset_x = (j % 2) * (tile_width / 2 + grout_w / 2)
-        elif layout_style == "One-third Offset":
-            offset_x = (j % 3) * (tile_width / 3 + grout_w / 3)
-        else:
-            offset_x = 0
+        for i in range(tiles_across):
+            for j in range(tiles_up):
+                x = start_x + i * tile_full_width * dir_x
+                y = start_y + j * tile_full_height
+                z = start_z + i * tile_full_width * dir_z
+                dx = tile_width * dir_x
+                dz = tile_width * dir_z
+                ax.bar3d(x, y, z, dx, tile_height, dz, color='lightgray', edgecolor='black', alpha=0.8)
 
-        if offset_x > 0:
-            needed = offset_x
-            matched = None
-            for s in sorted(scrap_pool):
-                if s >= needed - TOLERANCE:
-                    matched = s
-                    break
-            if matched:
-                scrap_pool.remove(matched)
-                remaining = round(matched - needed, 2)
-                if remaining > TOLERANCE:
-                    scrap_pool.append(remaining)
-                edgecolor = 'blue'
-                scraps_reused += 1
-            else:
-                leftover = tile_width - needed
-                if leftover > TOLERANCE:
-                    scrap_pool.append(round(leftover, 2))
-                edgecolor = 'red'
-            ax.add_patch(patches.Rectangle((x_offset, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='lightgray'))
-            cut_tiles += 1
+        ax.text(start_x + dir_x * wall["width"] / 2,
+                start_y + wall["height"] + 2,
+                start_z + dir_z * wall["width"] / 2,
+                label, color='black', ha='center', fontsize=10)
 
-        for i in range(tiles_across + 1):
-            tile_x = x_offset + i * tile_full_width + offset_x
-            if tile_x >= x_offset + wall_width:
-                break
+    draw_wall(ax, 0, 0, 0, 0, 1, wall_A, wall_A["label"])
+    draw_wall(ax, 0, 0, wall_A["width"], 1, 0, wall_B, wall_B["label"])
+    draw_wall(ax, wall_B["width"], 0, wall_A["width"], 0, -1, wall_C, wall_C["label"])
 
-            draw_width = min(tile_width, (x_offset + wall_width) - tile_x)
-            draw_height = tile_height
-            leftover = round(tile_width - draw_width, 2)
-            is_cut = draw_width < tile_width - TOLERANCE
-
-            reused = False
-            if draw_width > 0 and reuse_scraps:
-                for scrap in sorted(scrap_pool):
-                    if scrap >= draw_width - TOLERANCE:
-                        scrap_pool.remove(scrap)
-                        remaining = round(scrap - draw_width, 2)
-                        if remaining > TOLERANCE:
-                            scrap_pool.append(remaining)
-                        edgecolor = 'blue'
-                        reused = True
-                        scraps_reused += 1
-                        break
-
-            if not reused and is_cut:
-                scrap_pool.append(leftover)
-                edgecolor = 'red'
-            elif reused:
-                edgecolor = 'blue'
-            else:
-                edgecolor = 'gray'
-
-            overlap_area = 0
-            for cname, wall_label, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
-                if wall_label != wall["label"]:
-                    continue
-                overlap_x = max(0, min(tile_x + draw_width, x_offset + cutout_x + cutout_w) - max(tile_x, x_offset + cutout_x))
-                overlap_y = max(0, min(row_y + tile_height, cutout_y + cutout_h) - max(row_y, cutout_y))
-                overlap_area += overlap_x * overlap_y
-
-            tile_area = tile_width * tile_height
-            usable_ratio = 1 - (overlap_area / tile_area)
-            if usable_ratio <= 0.05:
-                continue
-            elif usable_ratio < 1:
-                is_cut = True
-                edgecolor = 'red'
-
-            ax.add_patch(patches.Rectangle((tile_x, row_y), draw_width, tile_height,
-                                           edgecolor=edgecolor, facecolor='lightgray', linewidth=1.5 if edgecolor == 'blue' else 1))
-
-            if is_cut or reused:
-                cut_tiles += 1
-            else:
-                full_tiles += 1
-
-    ax.add_patch(patches.Rectangle((x_offset, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
-    ax.text(
-    x_offset + wall_width / 2,
-    -1.5,
-    wall["label"],
-    ha='center',
-    va='top',
-    fontsize=10,
-    color='black',
-    bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.3')
-)
-    x_offset += wall_width + 6
-
-# Draw each cutout in its assigned wall
-x_offset_temp = 0
-for wall in walls:
-    for name, wall_label, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
-        if wall_label != wall["label"]:
-            continue
-        ax.add_patch(patches.Rectangle((x_offset_temp + cutout_x, cutout_y), cutout_w, cutout_h,
-                                       fill=True, color='white', edgecolor='black'))
-        ax.text(x_offset_temp + cutout_x + cutout_w / 2, cutout_y + cutout_h / 2, name,
-                ha='center', va='center', fontsize=8, color='black')
-    x_offset_temp += wall["width"] + 6
-
-ax.set_xlim(0, x_offset)
-ax.set_ylim(0, max_height)
-ax.invert_yaxis()
-st.pyplot(fig)
-
-# --- Export layout as PDF ---
-pdf_buffer = io.BytesIO()
-with PdfPages(pdf_buffer) as pdf:
-    pdf.savefig(fig, bbox_inches='tight')
-
-pdf_buffer.seek(0)
-st.download_button(
-    label="📄 Download Layout as PDF",
-    data=pdf_buffer,
-    file_name="tile_layout.pdf",
-    mime="application/pdf"
-)
-
-# Output
-st.subheader("Tile Count Summary")
-st.write(f"Full Tiles: {full_tiles}")
-st.write(f"Cut Tiles: {cut_tiles}")
-st.write(f"Total Tiles: {full_tiles + cut_tiles}")
-st.write(f"Scraps Reused: {scraps_reused}")
-if debug_mode:
-    st.write("Scrap Pool (inches):", scrap_pool)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_xlim(0, wall_B["width"] + wall_C["width"])
+    ax.set_ylim(0, max(w["height"] for w in walls))
+    ax.set_zlim(0, wall_A["width"] + wall_C["width"])
+    st.pyplot(fig)
+else:
+    st.warning("3D view is only available when 3 walls are configured.")

@@ -5,12 +5,12 @@ import math
 import re
 import io
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.lines import Line2D
 
 st.set_page_config(page_title="Tile Layout Visualizer", layout="wide")
 st.title("🧱 Smart Shower Tile Layout Visualizer with Advanced Patterns and Scrap Reuse")
 st.markdown("Visualize tile layouts across multiple walls with cutouts, staggered patterns, and real-time scrap tracking.")
 
-# Parse 5'11" input
 def parse_feet_inches(value):
     try:
         match = re.match(r"(?:(\d+)'\s*)?(\d+(?:\.\d*)?)?\"?", value.strip())
@@ -26,7 +26,7 @@ def dimension_input(label, default_str, key):
     text_val = st.text_input(label, value=default_str, key=key)
     return parse_feet_inches(text_val)
 
-# Tile settings
+# Sidebar
 st.sidebar.header("🧱 Tile Settings")
 tile_width = dimension_input("Tile Width", "1'0\"", "tile_width")
 tile_height = dimension_input("Tile Height", "1'0\"", "tile_height")
@@ -36,8 +36,8 @@ layout_style = st.selectbox("Tile Pattern", ["Straight", "Staggered (½ Offset)"
 reuse_scraps = st.checkbox("Reuse and Cut Scraps", True)
 debug_mode = st.checkbox("Show Debug Info", False)
 
-# Wall setup
-st.subheader("Wall Setup")
+st.markdown("---")
+st.header("📐 Wall Setup")
 num_walls = st.number_input("Number of Walls", min_value=1, max_value=5, value=3)
 walls = []
 for i in range(int(num_walls)):
@@ -46,8 +46,8 @@ for i in range(int(num_walls)):
     height = dimension_input(f"Wall {chr(65+i)} Height", "7'6\"", f"wall_height_{i}")
     walls.append({"label": f"Wall {chr(65+i)}", "width": width, "height": height})
 
-# Cutouts
-st.subheader("Cutouts")
+st.markdown("---")
+st.header("🔲 Cutouts")
 num_cutouts = st.number_input("Number of Cutouts", min_value=0, max_value=10, value=0)
 cutouts = []
 wall_labels = [w["label"] for w in walls]
@@ -56,7 +56,7 @@ for i in range(int(num_cutouts)):
     st.markdown(f"**Cutout {i+1}**")
     name = st.text_input(f"Cutout {i+1} Name", f"Cutout {i+1}", key=f"cutout_name_{i}")
     assigned_wall = st.selectbox(f"Cutout {i+1} Wall", wall_labels, key=f"cutout_wall_{i}")
-    cx = dimension_input(f"Cutout {i+1} X Position (relative to wall)", "3'0\"", f"cutout_x_{i}")
+    cx = dimension_input(f"Cutout {i+1} X Position", "3'0\"", f"cutout_x_{i}")
     cy = dimension_input(f"Cutout {i+1} Y Position", "0'0\"", f"cutout_y_{i}")
     cw = dimension_input(f"Cutout {i+1} Width", "1'0\"", f"cutout_w_{i}")
     ch = dimension_input(f"Cutout {i+1} Height", "1'0\"", f"cutout_h_{i}")
@@ -74,6 +74,9 @@ total_width = sum(w["width"] for w in walls)
 max_height = max(w["height"] for w in walls)
 scale = min(1, 10 / max(total_width, max_height))
 fig, ax = plt.subplots(figsize=(total_width * scale, max_height * scale))
+
+ax.set_axisbelow(True)
+ax.grid(True, which='both', color='lightgray', linestyle='--', linewidth=0.4)
 
 x_offset = 0
 for wall in walls:
@@ -105,13 +108,13 @@ for wall in walls:
                 remaining = round(matched - needed, 2)
                 if remaining > TOLERANCE:
                     scrap_pool.append(remaining)
-                edgecolor = 'blue'
+                edgecolor = '#2196F3'
                 scraps_reused += 1
             else:
                 leftover = tile_width - needed
                 if leftover > TOLERANCE:
                     scrap_pool.append(round(leftover, 2))
-                edgecolor = 'red'
+                edgecolor = '#F44336'
             ax.add_patch(patches.Rectangle((x_offset, row_y), needed, tile_height, edgecolor=edgecolor, facecolor='lightgray'))
             cut_tiles += 1
 
@@ -133,18 +136,18 @@ for wall in walls:
                         remaining = round(scrap - draw_width, 2)
                         if remaining > TOLERANCE:
                             scrap_pool.append(remaining)
-                        edgecolor = 'blue'
+                        edgecolor = '#2196F3'
                         reused = True
                         scraps_reused += 1
                         break
 
             if not reused and is_cut:
                 scrap_pool.append(leftover)
-                edgecolor = 'red'
+                edgecolor = '#F44336'
             elif reused:
-                edgecolor = 'blue'
+                edgecolor = '#2196F3'
             else:
-                edgecolor = 'gray'
+                edgecolor = '#4CAF50'
 
             overlap_area = 0
             for cname, wall_label, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
@@ -160,10 +163,10 @@ for wall in walls:
                 continue
             elif usable_ratio < 1:
                 is_cut = True
-                edgecolor = 'red'
+                edgecolor = '#F44336'
 
             ax.add_patch(patches.Rectangle((tile_x, row_y), draw_width, tile_height,
-                                           edgecolor=edgecolor, facecolor='lightgray', linewidth=1.5 if edgecolor == 'blue' else 1))
+                                           edgecolor=edgecolor, facecolor='lightgray', linewidth=1.5 if reused else 1))
 
             if is_cut or reused:
                 cut_tiles += 1
@@ -172,18 +175,13 @@ for wall in walls:
 
     ax.add_patch(patches.Rectangle((x_offset, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
     ax.text(
-    x_offset + wall_width / 2,
-    -1.5,
-    wall["label"],
-    ha='center',
-    va='top',
-    fontsize=10,
-    color='black',
-    bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.3')
-)
+        x_offset + wall_width / 2, -1.5, wall["label"],
+        ha='center', va='top', fontsize=10, color='black',
+        bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.3')
+    )
     x_offset += wall_width + 6
 
-# Draw each cutout in its assigned wall
+# Cutouts
 x_offset_temp = 0
 for wall in walls:
     for name, wall_label, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
@@ -198,26 +196,33 @@ for wall in walls:
 ax.set_xlim(0, x_offset)
 ax.set_ylim(0, max_height)
 ax.invert_yaxis()
+
+# Add Legend
+legend_elements = [
+    Line2D([0], [0], color='#4CAF50', lw=2, label='Full Tile'),
+    Line2D([0], [0], color='#F44336', lw=2, label='Cut Tile'),
+    Line2D([0], [0], color='#2196F3', lw=2, label='Reused Scrap'),
+    Line2D([0], [0], color='black', lw=2, linestyle='--', label='Wall Boundary'),
+]
+ax.legend(handles=legend_elements, loc='upper right', fontsize=8, frameon=True)
+
+st.markdown("---")
+st.header("🖼️ Tile Layout Preview")
 st.pyplot(fig)
 
-# --- Export layout as PDF ---
+# Export as PDF
 pdf_buffer = io.BytesIO()
 with PdfPages(pdf_buffer) as pdf:
     pdf.savefig(fig, bbox_inches='tight')
-
 pdf_buffer.seek(0)
-st.download_button(
-    label="📄 Download Layout as PDF",
-    data=pdf_buffer,
-    file_name="tile_layout.pdf",
-    mime="application/pdf"
-)
+st.download_button("📄 Download Layout as PDF", data=pdf_buffer, file_name="tile_layout.pdf", mime="application/pdf")
 
-# Output
-st.subheader("Tile Count Summary")
-st.write(f"Full Tiles: {full_tiles}")
-st.write(f"Cut Tiles: {cut_tiles}")
-st.write(f"Total Tiles: {full_tiles + cut_tiles}")
-st.write(f"Scraps Reused: {scraps_reused}")
+# Summary
+st.markdown("---")
+st.header("📊 Tile Count Summary")
+st.write(f"✅ Full Tiles: `{full_tiles}`")
+st.write(f"✂️ Cut Tiles: `{cut_tiles}`")
+st.write(f"🔢 Total Tiles: `{full_tiles + cut_tiles}`")
+st.write(f"♻️ Scraps Reused: `{scraps_reused}`")
 if debug_mode:
-    st.write("Scrap Pool (inches):", scrap_pool)
+    st.write("📦 Scrap Pool (inches):", scrap_pool)

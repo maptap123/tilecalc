@@ -171,8 +171,16 @@ for wall in walls:
                 full_tiles += 1
 
     ax.add_patch(patches.Rectangle((x_offset, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
-    ax.text(x_offset + wall_width / 2, wall_height + 1, wall["label"], ha='center')
-    x_offset += wall_width + 6
+    ax.text(
+    x_offset + wall_width / 2,
+    -1.5,  # Just above the wall
+    wall["label"],
+    ha='center',
+    va='top',
+    fontsize=10,
+    color='black',
+    bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.3')
+)
 
 # Draw each cutout in its assigned wall
 x_offset_temp = 0

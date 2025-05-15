@@ -73,7 +73,7 @@ scrap_pool = []
 total_width = sum(w["width"] for w in walls)
 max_height = max(w["height"] for w in walls)
 scale = min(1, 10 / max(total_width, max_height))
-fig, ax = plt.subplots(figsize=(total_width * scale * zoom, max_height * scale * zoom))
+fig, ax = plt.subplots(figsize=(total_width * scale, max_height * scale))
 
 x_offset = 0
 for wall in walls:

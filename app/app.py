@@ -197,23 +197,27 @@ ax.set_xlim(0, x_offset)
 ax.set_ylim(0, max_height)
 ax.invert_yaxis()
 
-# Add Legend
+# Add Legend (only for display)
 legend_elements = [
     Line2D([0], [0], color='#4CAF50', lw=2, label='Full Tile'),
     Line2D([0], [0], color='#F44336', lw=2, label='Cut Tile'),
     Line2D([0], [0], color='#2196F3', lw=2, label='Reused Scrap'),
     Line2D([0], [0], color='black', lw=2, linestyle='--', label='Wall Boundary'),
 ]
-ax.legend(handles=legend_elements, loc='upper right', fontsize=8, frameon=True)
+legend = ax.legend(handles=legend_elements, loc='upper right', fontsize=8, frameon=True)
 
 st.markdown("---")
 st.header("🖼️ Tile Layout Preview")
 st.pyplot(fig)
 
-# Export as PDF
+# Export as PDF (hide legend first)
 pdf_buffer = io.BytesIO()
+if legend:
+    legend.remove()
+
 with PdfPages(pdf_buffer) as pdf:
     pdf.savefig(fig, bbox_inches='tight')
+
 pdf_buffer.seek(0)
 st.download_button("📄 Download Layout as PDF", data=pdf_buffer, file_name="tile_layout.pdf", mime="application/pdf")
 

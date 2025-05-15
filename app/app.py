@@ -1,10 +1,10 @@
-# Full updated script with per-wall cutouts
-
 import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import math
 import re
+import io
+from matplotlib.backends.backend_pdf import PdfPages
 
 st.set_page_config(page_title="Tile Layout Visualizer", layout="wide")
 st.title("🧱 Smart Shower Tile Layout Visualizer with Advanced Patterns and Scrap Reuse")
@@ -173,7 +173,7 @@ for wall in walls:
     ax.add_patch(patches.Rectangle((x_offset, 0), wall_width, wall_height, fill=False, edgecolor='black', linewidth=2))
     ax.text(
     x_offset + wall_width / 2,
-    -1.5,  # Just above the wall
+    -1.5,
     wall["label"],
     ha='center',
     va='top',
@@ -199,9 +199,6 @@ ax.set_xlim(0, x_offset)
 ax.set_ylim(0, max_height)
 ax.invert_yaxis()
 st.pyplot(fig)
-
-import io
-from matplotlib.backends.backend_pdf import PdfPages
 
 # --- Export layout as PDF ---
 pdf_buffer = io.BytesIO()

@@ -181,16 +181,31 @@ for wall in walls:
     )
     x_offset += wall_width + 6
 
-# Cutouts
+# Cutouts with labels
 x_offset_temp = 0
 for wall in walls:
     for name, wall_label, cutout_x, cutout_y, cutout_w, cutout_h in cutouts:
         if wall_label != wall["label"]:
             continue
-        ax.add_patch(patches.Rectangle((x_offset_temp + cutout_x, cutout_y), cutout_w, cutout_h,
+        x = x_offset_temp + cutout_x
+        y = cutout_y
+
+        # Draw cutout box
+        ax.add_patch(patches.Rectangle((x, y), cutout_w, cutout_h,
                                        fill=True, color='white', edgecolor='black'))
-        ax.text(x_offset_temp + cutout_x + cutout_w / 2, cutout_y + cutout_h / 2, name,
+
+        # Label: Center name
+        ax.text(x + cutout_w / 2, y + cutout_h / 2, name,
                 ha='center', va='center', fontsize=8, color='black')
+
+        # Label: Width on top
+        ax.text(x + cutout_w / 2, y - 0.5, f'{int(cutout_w)}"', 
+                ha='center', va='top', fontsize=8, color='black')
+
+        # Label: Height on left
+        ax.text(x - 0.3, y + cutout_h / 2, f'{int(cutout_h)}"', 
+                ha='right', va='center', fontsize=8, color='black', rotation=90)
+
     x_offset_temp += wall["width"] + 6
 
 ax.set_xlim(0, x_offset)

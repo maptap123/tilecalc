@@ -35,7 +35,6 @@ grout_h = st.number_input("Grout Spacing Vertical (in)", min_value=0.0, value=0.
 layout_style = st.selectbox("Tile Pattern", ["Straight", "Staggered (½ Offset)", "One-third Offset"])
 reuse_scraps = st.checkbox("Reuse and Cut Scraps", True)
 debug_mode = st.checkbox("Show Debug Info", False)
-zoom = st.slider("Zoom", 0.5, 2.0, 1.0, 0.1)
 
 # Wall setup
 st.subheader("Wall Setup")
@@ -191,6 +190,22 @@ ax.set_xlim(0, x_offset)
 ax.set_ylim(0, max_height)
 ax.invert_yaxis()
 st.pyplot(fig)
+
+import io
+from matplotlib.backends.backend_pdf import PdfPages
+
+# --- Export layout as PDF ---
+pdf_buffer = io.BytesIO()
+with PdfPages(pdf_buffer) as pdf:
+    pdf.savefig(fig, bbox_inches='tight')
+
+pdf_buffer.seek(0)
+st.download_button(
+    label="📄 Download Layout as PDF",
+    data=pdf_buffer,
+    file_name="tile_layout.pdf",
+    mime="application/pdf"
+)
 
 # Output
 st.subheader("Tile Count Summary")
